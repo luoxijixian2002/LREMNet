@@ -1,0 +1,43 @@
+# Stage 2: train the full LREMNet with the decomposition network frozen.
+# Paper implementation details: Adam (beta1=0.9, beta2=0.999), lr=1e-4,
+# batch size 8, step decay of 0.5 every 50 epochs, ~200 epochs,
+# input resized to 400x600.
+data:
+  type: LLdatasetStage2
+  data_dir: ./data/LOL
+  train_dataset: LOL
+  val_dataset: LOL
+  size: [400, 600]          # (H, W), paper uses 400x600
+  num_workers: 4
+  ckpt_dir: ./ckpt/stage2
+  stage1_ckpt: ./ckpt/stage1/stage1_weight.pth.tar
+
+model:
+  channels: 64
+  num_edge_blocks: 2        # GradStateSpaceBlock count inside each EdgeMamba
+  pieces_num_blocks: 12     # number of local patches of PiecesMamba (Fig. 7)
+  pieces_layers: 2          # SS2D + FF layers inside PiecesMamba
+
+training:
+  n_epochs: 200
+  batch_size: 8
+  validation_freq: 500
+  clip_grad_norm: 0.0       # 0 disables gradient clipping
+
+sampling:
+  batch_size: 1
+
+optim:
+  optimizer: Adam
+  lr: 0.0001
+  betas: [0.9, 0.999]
+  weight_decay: 0.0
+  lr_scheduler: step        # paper: decay 0.5 every 50 epochs
+  step_size: 50
+  gamma: 0.5
+
+loss:                      # Eq. 13 weighting coefficients
+  weight_illumination: 0.5
+  weight_edge: 0.5
+  weight_color: 0.5
+  weight_recon: 1.0

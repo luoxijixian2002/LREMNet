@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.ipynb_checkpoints/
+
+# 模型权重 / 训练产物（体积大，不入库）
+ckpt/
+results/
+*.pth
+*.pth.tar
+*.pt
+*.ckpt
+
+# 数据集（仅保留目录说明）
+data/*/input/
+data/*/target/
+data/*/*.txt
+!data/LOL/README.txt
+
+# 日志与 IDE
+*.log
+.vscode/
+.idea/
+.DS_Store

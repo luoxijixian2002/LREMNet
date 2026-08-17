@@ -1,0 +1,12 @@
+torch>=2.0.0
+torchvision>=0.15.0
+einops>=0.7.0
+timm>=0.9.0
+pyyaml>=6.0
+pillow>=9.0.0
+numpy>=1.24.0
+tqdm>=4.60.0
+lpips>=0.1.4
+# 可选（强烈推荐，需 CUDA 编译环境）：
+# mamba_ssm   —— 安装后自动启用融合 CUDA 选择性扫描内核；
+#               未安装时代码自动切换到纯 PyTorch 回退实现（较慢但结果一致）。
