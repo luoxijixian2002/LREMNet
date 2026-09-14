@@ -14,9 +14,13 @@ data:
 
 model:
   channels: 64
+  latent_dim: 3            # 潜空间瓶颈维度，须与所用 stage1 权重一致
   num_edge_blocks: 2        # GradStateSpaceBlock count inside each EdgeMamba
   pieces_num_blocks: 12     # number of local patches of PiecesMamba (Fig. 7)
   pieces_layers: 2          # SS2D + FF layers inside PiecesMamba
+  prior_type: gradient      # internal prior of EdgeMamba:
+                            #   gradient (paper) | texture | frequency | none
+                            #   (ablation: only the prior extractor changes)
 
 training:
   n_epochs: 200

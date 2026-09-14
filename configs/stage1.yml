@@ -10,6 +10,7 @@ data:
 
 model:
   channels: 64
+  latent_dim: 3            # 潜空间瓶颈维度（E6 敏感性消融可在 {2,3,4,6,8} 中改）
 
 training:
   n_epochs: 100

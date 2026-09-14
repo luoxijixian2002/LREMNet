@@ -55,9 +55,9 @@ def test_edge_mamba(device):
 
 
 def test_pieces_mamba(device):
-    from models.piecesmamba import PatchMamba
+    from models.piecesmamba import PiecesMamba
     print("\n[4/6] PiecesMamba (12 局部块独立状态空间建模)")
-    net = PatchMamba(input_channels=3, num_blocks=12, num_mamba_layers=2).to(device).eval()
+    net = PiecesMamba(input_channels=3, num_blocks=12, num_mamba_layers=2).to(device).eval()
     x = torch.rand(2, 3, 50, 75, device=device)
     with torch.no_grad():
         y = net(x)

@@ -103,7 +103,8 @@ def main():
 
     # --- 创建模型 ---
     print("=> 创建 CTDN 模型 (channels={})...".format(config.model.channels))
-    model = CTDN(channels=config.model.channels)
+    model = CTDN(channels=config.model.channels,
+                 latent_dim=getattr(config.model, 'latent_dim', 3))
     model = model.to(device)
     if torch.cuda.is_available() and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))

@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 import models.archs.arch_util as arch_util
-from models.archs.GradMamba import *
+from models.archs.EdgeMamba import *
 try:
     from mamba_ssm.ops.selective_scan_interface import selective_scan_fn, selective_scan_ref
 except ImportError:
@@ -13,9 +13,9 @@ import math
 from models.archs.SS2D_arch import *
 import numbers
 
-class GradMamba(nn.Module):
+class EdgeMamba(nn.Module):
     def __init__(self, nf=64, num_mamba_blocks=2):
-        super(GradMamba, self).__init__()
+        super(EdgeMamba, self).__init__()
 
         self.nf = nf
         ResidualBlock_noBN_f = functools.partial(arch_util.ResidualBlock_noBN, nf=nf)
@@ -272,9 +272,9 @@ class LayerNorm(nn.Module):
         h, w = x.shape[-2:]
         return to_4d(self.body(to_3d(x)), h, w)
 
-class PatchMamba(torch.nn.Module):
+class PiecesMamba(torch.nn.Module):
     def __init__(self,  input_channels, num_blocks=4, num_mamba_layers=2,  LayerNorm_type='WithBias'):
-        super(PatchMamba, self).__init__()
+        super(PiecesMamba, self).__init__()
         self.block_processor = ImageBlockProcessor(num_blocks)
         self.num_mamba_layers = num_mamba_layers
         if isinstance(num_blocks, tuple):

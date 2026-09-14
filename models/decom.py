@@ -73,12 +73,12 @@ class upsampling(nn.Module):
 
 
 class channel_down(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, latent_dim=3):
         super(channel_down, self).__init__()
 
         self.conv0 = nn.Conv2d(channels * 4, channels * 2, kernel_size=(3, 3), stride=(1, 1), padding=1)
         self.conv1 = nn.Conv2d(channels * 2, channels, kernel_size=(3, 3), stride=(1, 1), padding=1)
-        self.conv2 = nn.Conv2d(channels, 3, kernel_size=(3, 3), stride=(1, 1), padding=1)
+        self.conv2 = nn.Conv2d(channels, latent_dim, kernel_size=(3, 3), stride=(1, 1), padding=1)
 
         self.relu = nn.LeakyReLU()
 
@@ -89,10 +89,10 @@ class channel_down(nn.Module):
 
 
 class channel_up(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, latent_dim=3):
         super(channel_up, self).__init__()
 
-        self.conv0 = nn.Conv2d(3, channels, kernel_size=(3, 3), stride=(1, 1), padding=1)
+        self.conv0 = nn.Conv2d(latent_dim, channels, kernel_size=(3, 3), stride=(1, 1), padding=1)
         self.conv1 = nn.Conv2d(channels, channels * 2, kernel_size=(3, 3), stride=(1, 1), padding=1)
         self.conv2 = nn.Conv2d(channels * 2, channels * 4, kernel_size=(3, 3), stride=(1, 1), padding=1)
 
@@ -135,13 +135,13 @@ class feature_pyramid(nn.Module):
 
 
 class ReconNet(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, latent_dim=3):
         super(ReconNet, self).__init__()
 
         self.pyramid = feature_pyramid(channels)
 
-        self.channel_down = channel_down(channels)
-        self.channel_up = channel_up(channels)
+        self.channel_down = channel_down(channels, latent_dim)
+        self.channel_up = channel_up(channels, latent_dim)
 
         self.block_up0 = Res_block(channels * 4, channels * 4)
         self.block_up1 = Res_block(channels * 4, channels * 4)
@@ -270,10 +270,10 @@ class Cross_Attention(nn.Module):
 
 
 class Retinex_decom(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, latent_dim=3):
         super(Retinex_decom, self).__init__()
 
-        self.conv0 = nn.Conv2d(3, channels, kernel_size=(3, 3), stride=(1, 1), padding=1)
+        self.conv0 = nn.Conv2d(latent_dim, channels, kernel_size=(3, 3), stride=(1, 1), padding=1)
         self.blocks0 = nn.Sequential(Res_block(channels, channels),
                                      Res_block(channels, channels))
 
@@ -311,11 +311,11 @@ class Retinex_decom(nn.Module):
 
 
 class CTDN(nn.Module):
-    def __init__(self, channels=64):
+    def __init__(self, channels=64, latent_dim=3):
         super(CTDN, self).__init__()
 
-        self.ReconNet = ReconNet(channels)
-        self.retinex = Retinex_decom(channels)
+        self.ReconNet = ReconNet(channels, latent_dim)
+        self.retinex = Retinex_decom(channels, latent_dim)
 
     def forward(self, images, pred_fea=None):
 

@@ -41,7 +41,7 @@ LREMNet-code/
 │   ├── decom.py        #   CTDN 潜空间 Retinex 分解网络
 │   ├── illum.py        #   光照增强 U-Net
 │   ├── edgemamba.py    #   EdgeMamba（梯度先验引导 SSM）
-│   ├── piecesmamba.py  #   PiecesMamba / PatchMamba
+│   ├── piecesmamba.py  #   PiecesMamba
 │   ├── ss2d.py         #   SS2D 2D 选择性扫描
 │   ├── CrossAttetion.py#   交叉/自注意力
 │   ├── lremnet.py      #   LREMNet 完整网络

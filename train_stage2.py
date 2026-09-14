@@ -131,6 +131,8 @@ def main():
         num_edge_blocks=config.model.num_edge_blocks,
         pieces_num_blocks=config.model.pieces_num_blocks,
         pieces_layers=config.model.pieces_layers,
+        prior_type=getattr(config.model, 'prior_type', 'gradient'),
+        latent_dim=getattr(config.model, 'latent_dim', 3),
     )
     model = model.to(device)
 

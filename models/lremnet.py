@@ -23,7 +23,7 @@ from models.decom import CTDN
 from models.illum import IllumUNet
 from models.CrossAttetion import Attention
 from models.edgemamba import GradStateSpaceBlock, GradientExtractor
-from models.piecesmamba import PatchMamba
+from models.piecesmamba import PiecesMamba
 
 
 def run_edge_mamba(blocks, feat):
@@ -73,15 +73,25 @@ class LREMNet(nn.Module):
         num_edge_blocks: number of GradStateSpaceBlock inside each EdgeMamba.
         pieces_num_blocks: number of local patches for PiecesMamba (paper: 12).
         pieces_layers: number of SS2D + FF layers inside PiecesMamba.
+        prior_type: internal physical prior used by EdgeMamba, one of
+            'gradient' (default, paper) / 'texture' / 'frequency' / 'none'.
+            Only the prior extractor inside EdgeMamba changes; the Sobel
+            edge map ``F_edge`` (Eq. 12) and the gradient-guided loss keep
+            the paper's definition for all variants, so the ablation
+            isolates a single variable.
+        latent_dim: number of channels of the latent code produced by the
+            decomposition bottleneck (paper: 3; sensitivity ablation in
+            Sec. 4.4 varies it in {2,3,4,6,8}).
     """
 
     def __init__(self, channels=64, num_edge_blocks=2,
-                 pieces_num_blocks=12, pieces_layers=2):
+                 pieces_num_blocks=12, pieces_layers=2, prior_type='gradient',
+                 latent_dim=3):
         super(LREMNet, self).__init__()
         c = channels
 
         # ---------- 1. latent Retinex decomposition (frozen in stage 2) -----
-        self.decom = CTDN(channels)
+        self.decom = CTDN(channels, latent_dim)
 
         # ---------- 2. illumination enhancement branch ----------------------
         self.illum_net = IllumUNet(in_ch=3, out_ch=3, base_ch=32)
@@ -91,7 +101,8 @@ class LREMNet(nn.Module):
         self.proj_r1 = nn.Conv2d(3, c, 3, 1, 1)          # R_low  -> K, V
         self.cross_attn1 = Attention(dim=c, num_heads=8, bias=False)
         self.edge_mamba1 = nn.ModuleList(
-            [GradStateSpaceBlock(dim=c, d_state=16) for _ in range(num_edge_blocks)])
+            [GradStateSpaceBlock(dim=c, d_state=16, prior_type=prior_type)
+             for _ in range(num_edge_blocks)])
         self.grad_extractor = GradientExtractor()        # (B, C, H, W) -> (B, 1, H, W)
         self.edge_fuse = nn.Conv2d(c + 1, c, 3, 1, 1)    # F_edge' = [F_mamba', F_edge]
 
@@ -100,9 +111,10 @@ class LREMNet(nn.Module):
         self.proj_edge = nn.Conv2d(c, c, 3, 1, 1)        # F_edge' -> Q
         self.cross_attn2 = Attention(dim=c, num_heads=8, bias=False)
         self.edge_mamba2 = nn.ModuleList(
-            [GradStateSpaceBlock(dim=c, d_state=16) for _ in range(num_edge_blocks)])
+            [GradStateSpaceBlock(dim=c, d_state=16, prior_type=prior_type)
+             for _ in range(num_edge_blocks)])
         self.to_r = nn.Conv2d(c, 3, 3, 1, 1)
-        self.pieces_reflect = PatchMamba(input_channels=3,
+        self.pieces_reflect = PiecesMamba(input_channels=3,
                                          num_blocks=pieces_num_blocks,
                                          num_mamba_layers=pieces_layers)
 
@@ -111,9 +123,10 @@ class LREMNet(nn.Module):
         self.proj_r3 = nn.Conv2d(3, c, 3, 1, 1)          # R_enh  -> K, V
         self.cross_attn3 = Attention(dim=c, num_heads=8, bias=False)
         self.edge_mamba3 = nn.ModuleList(
-            [GradStateSpaceBlock(dim=c, d_state=16) for _ in range(num_edge_blocks)])
+            [GradStateSpaceBlock(dim=c, d_state=16, prior_type=prior_type)
+             for _ in range(num_edge_blocks)])
         self.to_img = nn.Conv2d(c, 3, 3, 1, 1)
-        self.pieces_fuse = PatchMamba(input_channels=3,
+        self.pieces_fuse = PiecesMamba(input_channels=3,
                                       num_blocks=pieces_num_blocks,
                                       num_mamba_layers=pieces_layers)
         self.decoder = Decoder(in_ch=3)

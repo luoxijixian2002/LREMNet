@@ -66,6 +66,92 @@ class GradientExtractor(nn.Module):
 
         return gradient_magnitude
 
+
+class TextureExtractor(nn.Module):
+    """Local texture statistics as the internal prior (no gradient operators).
+
+    Three component maps of a 3x3 window: local standard deviation, mean
+    absolute deviation w.r.t. the local mean, and local range. They share the
+    same channel-fusion / normalization pipeline as GradientExtractor, so the
+    prior-guided scanning mechanism remains structurally identical.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.channel_fusion = nn.Conv2d(3, 1, 1, bias=False)
+
+    @staticmethod
+    def _gray(x):
+        return x.mean(dim=1, keepdim=True) if x.size(1) > 1 else x
+
+    def forward(self, x):
+        gray = self._gray(x)
+        mean = F.avg_pool2d(gray, 3, 1, padding=1)
+        sq_mean = F.avg_pool2d(gray * gray, 3, 1, padding=1)
+        std = torch.sqrt(torch.relu(sq_mean - mean * mean) + 1e-6)          # local std
+        dev = F.avg_pool2d(torch.abs(gray - mean), 3, 1, padding=1)         # mean abs deviation
+        # local range = max - min (torch has no min_pool2d, use -max(-x))
+        range_map = F.max_pool2d(gray, 3, 1, padding=1) \
+            + F.max_pool2d(-gray, 3, 1, padding=1)                          # local range
+        stack = torch.cat([std, dev, range_map], dim=1)                     # (B, 3, H, W)
+        return torch.abs(self.channel_fusion(stack))
+
+
+class FrequencyExtractor(nn.Module):
+    """Multi-scale high-frequency energy as the internal prior.
+
+    Three high-pass residual maps at different cut-off scales (3x3 / 5x5 / 7x7
+    local means) represent wavelet / spectral high-pass information. The
+    channel-fusion pipeline is identical to GradientExtractor.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.channel_fusion = nn.Conv2d(3, 1, 1, bias=False)
+
+    @staticmethod
+    def _gray(x):
+        return x.mean(dim=1, keepdim=True) if x.size(1) > 1 else x
+
+    def forward(self, x):
+        gray = self._gray(x)
+        high3 = gray - F.avg_pool2d(gray, 3, 1, padding=1)
+        high5 = gray - F.avg_pool2d(gray, 5, 1, padding=2)
+        high7 = gray - F.avg_pool2d(gray, 7, 1, padding=3)
+        stack = torch.cat([high3, high5, high7], dim=1)  # (B, 3, H, W)
+        return torch.abs(self.channel_fusion(stack))
+
+
+class NoPriorExtractor(nn.Module):
+    """Constant prior: the priority score becomes a constant, so the module
+    reduces to a standard (unguided) Mamba scan."""
+
+    def forward(self, x):
+        return torch.ones(x.shape[0], 1, x.shape[2], x.shape[3], device=x.device)
+
+
+PRIOR_TYPES = ("gradient", "texture", "frequency", "none")
+
+
+def build_prior_extractor(prior_type="gradient"):
+    """Factory of the prior extractor used by the prior-guided SSM block.
+
+    All variants output (B, 1, H, W) and feed the *same* downstream
+    priority-scoring / sorting / C-injection pipeline, so swapping the prior
+    changes exactly one variable of the network.
+    """
+    prior_type = prior_type.lower()
+    if prior_type == "gradient":
+        return GradientExtractor()
+    if prior_type == "texture":
+        return TextureExtractor()
+    if prior_type == "frequency":
+        return FrequencyExtractor()
+    if prior_type in ("none", "no_prior", "no-prior"):
+        return NoPriorExtractor()
+    raise ValueError(
+        f"Unknown prior_type '{prior_type}', expected one of {PRIOR_TYPES}")
+
 class SimplifiedGradientToPriority(nn.Module):
     def __init__(self):
         super().__init__()
@@ -87,7 +173,7 @@ class SimplifiedGradientToPriority(nn.Module):
 
 
 class GradStateSpaceBlock(nn.Module):
-    def __init__(self, dim, d_state, mlp_ratio=2.0, scale=1.0):
+    def __init__(self, dim, d_state, mlp_ratio=2.0, scale=1.0, prior_type='gradient'):
         super().__init__()
         self.dim = dim
         self.d_state = d_state
@@ -96,7 +182,7 @@ class GradStateSpaceBlock(nn.Module):
         self.norm1 = nn.LayerNorm(dim)
         self.norm2 = nn.LayerNorm(dim)
 
-        self.gradient_extractor = GradientExtractor()
+        self.prior_extractor = build_prior_extractor(prior_type)
         self.gradient_to_priority = SimplifiedGradientToPriority()
         self.gradient_mamba = GradientGuidedMamba(dim, d_state, mlp_ratio)
 
@@ -111,8 +197,8 @@ class GradStateSpaceBlock(nn.Module):
         H, W = x_size
 
         x_spatial = x.permute(0, 2, 1).view(B, C, H, W)
-        extracted_gradient = self.gradient_extractor(x_spatial)  # (B, 1, H, W)
-        gradient_priority = self.gradient_to_priority(extracted_gradient)  # (B, H, W)
+        extracted_prior = self.prior_extractor(x_spatial)  # (B, 1, H, W)
+        gradient_priority = self.gradient_to_priority(extracted_prior)  # (B, H, W)
         residual = x
         x = self.norm1(x)
         x = self.gradient_mamba(x, x_size, gradient_priority)

@@ -2,11 +2,16 @@
 
 The paper's ``EdgeMamba`` module (gradient-prior guided selective
 state space model) is implemented in ``models/edgemamba.py``.
-This module keeps the import path ``models.archs.GradMamba`` used
-by the official ``models/piecesmamba.py`` working.
+This module re-exports the building blocks under the unified name
+``models.archs.EdgeMamba`` for use by ``models/piecesmamba.py``.
 """
 from models.edgemamba import (
     GradientExtractor,
+    TextureExtractor,
+    FrequencyExtractor,
+    NoPriorExtractor,
+    build_prior_extractor,
+    PRIOR_TYPES,
     SimplifiedGradientToPriority,
     GradStateSpaceBlock,
     GradientGuidedMamba,
@@ -17,6 +22,11 @@ from models.edgemamba import (
 
 __all__ = [
     "GradientExtractor",
+    "TextureExtractor",
+    "FrequencyExtractor",
+    "NoPriorExtractor",
+    "build_prior_extractor",
+    "PRIOR_TYPES",
     "SimplifiedGradientToPriority",
     "GradStateSpaceBlock",
     "GradientGuidedMamba",

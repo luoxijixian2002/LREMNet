@@ -1,0 +1,41 @@
+# Stage 2 变体：无先验（E3 消融，退化为标准 Mamba 扫描）
+data:
+  type: LLdatasetStage2
+  data_dir: ./data/LOL
+  train_dataset: LOL
+  val_dataset: LOL
+  size: [400, 600]
+  num_workers: 4
+  ckpt_dir: ./ckpt/stage2_none
+  stage1_ckpt: ./ckpt/stage1/stage1_weight.pth.tar
+
+model:
+  channels: 64
+  num_edge_blocks: 2
+  pieces_num_blocks: 12
+  pieces_layers: 2
+  prior_type: none
+
+training:
+  n_epochs: 200
+  batch_size: 8
+  validation_freq: 500
+  clip_grad_norm: 0.0
+
+sampling:
+  batch_size: 1
+
+optim:
+  optimizer: Adam
+  lr: 0.0001
+  betas: [0.9, 0.999]
+  weight_decay: 0.0
+  lr_scheduler: step
+  step_size: 50
+  gamma: 0.5
+
+loss:
+  weight_illumination: 0.5
+  weight_edge: 0.5
+  weight_color: 0.5
+  weight_recon: 1.0
