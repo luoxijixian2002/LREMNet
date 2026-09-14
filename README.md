@@ -113,12 +113,3 @@ python eval_lremnet.py --input_path path/to/image --ckpt ckpt/stage2/stage2_weig
 python calculate_metrics.py --filelist data/LOL/LOL_val.txt \
     --ckpt ckpt/stage2/stage2_weight.pth.tar
 ```
-
-Notes
------
-* 官方仓库中 `models/archs/*`、`utils/*`、`configs/*`、Stage-2 训练脚本等
-  缺失，本实现已补齐并修复了断链导入（`piecesmamba.py` 缺少的
-  `import math`、`mamba_ssm` 回退等）。
-* EdgeMamba 按梯度优先级对序列排序后扫描（论文 Eq. 10-11，
-  ``C_enhanced = C + gamma * Linear(S)``）。
-* PiecesMamba 默认划分为 12 个局部块（论文 Fig. 7）。
